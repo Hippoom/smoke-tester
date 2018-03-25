@@ -1,0 +1,92 @@
+apply plugin: 'maven-publish'
+
+group = 'com.github.hippoom'
+version = '0.1.0'
+
+jar {
+    archiveName "${rootProject.name}-${rootProject.version}.jar"
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    archiveName "${rootProject.name}-${rootProject.version}-javadoc.jar"
+    classifier = 'javadoc'
+    from 'build/docs/javadoc'
+}
+
+task sourcesJar(type: Jar) {
+    archiveName "${rootProject.name}-${rootProject.version}-sources.jar"
+    from sourceSets.main.allSource
+    classifier = 'sources'
+}
+
+artifacts {
+    archives jar
+    archives sourcesJar
+    archives javadocJar
+}
+
+def git = 'https://github.com/Hippoom/smoke-tester.git'
+
+bintray {
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+    pkg {
+        repo = 'maven'
+        name = rootProject.name
+        licenses = ['Apache-2.0']
+        vcsUrl = git
+        version {
+            gpg {
+                sign = true
+                passphrase = System.getenv('GPG_PASSPHRASE')
+            }
+        }
+    }
+    publications = ['MyPublication']
+}
+
+def pomConfig = {
+    licenses {
+        license {
+            name "The Apache Software License, Version 2.0"
+            url "https://github.com/Hippoom/smoke-tester/blob/master/LICENSE"
+            distribution "repo"
+        }
+    }
+
+    developers {
+        developer {
+            id 'hippoom'
+            name 'Yugang Zhou'
+        }
+    }
+
+    scm {
+        url "scm:${git}"
+        connection "scm:${git}"
+        developerConnection "scm:${git}"
+    }
+}
+
+publishing {
+    publications {
+        MyPublication(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+            artifact javadocJar
+
+            groupId rootProject.group
+            artifactId rootProject.name
+            version rootProject.version
+
+            pom.withXml {
+                def root = asNode()
+                root.appendNode('description', 'Smoke test support')
+                root.appendNode('name', 'Smoke Tester')
+                root.appendNode('url', "${git}")
+                root.children().last() + pomConfig
+            }
+        }
+    }
+}
+
